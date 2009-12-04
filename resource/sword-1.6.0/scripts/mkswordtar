@@ -1,0 +1,30 @@
+#!/bin/sh
+
+echo 
+echo "*** Autogening main sword engine build system"
+echo 
+(cd ..;./autogen.sh)
+
+REV=`cd ..;basename \`pwd ..\`|cut -d\- -f2`
+SWORDVER=`grep "define VERSI" ../include/config.h |cut -f2 -d"\""`
+
+sed -i "s/^\(PROJECT_NUMBER\).*/\1 = \"$SWORDVER\"/" ../doc/Doxyfile
+
+if [ "$REV" = "$SWORDVER" ]; then 
+	chmod +x *
+
+	echo 
+	echo "*** Autogening swig bindings build system"
+	echo 
+	cd ../bindings/swig/package; ./autogen.sh; cd ../../..;
+
+	echo 
+	echo "*** Tarring up" sword-$REV.tar.gz
+	echo 
+	cd ..; tar -v -c -p -s -z --exclude sword-$REV/bin --exclude sword-$REV/autom4te.cache --exclude sword-$REV/bindings/swig/package/autom4te.cache -X sword-$REV/distignore -f sword-$REV.tar.gz sword-$REV/*
+
+else
+	echo $"Directory version is $REV, but config.h has $SWORDVER"
+	exit 1
+
+fi

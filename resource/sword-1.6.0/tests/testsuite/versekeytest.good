@@ -1,0 +1,43 @@
+single
+multiple
+x: Amos 1:5
+Amos 1:5
+Amos 1:5
+Error: 1: Luke 1:1
+Error: 1: Luke 1:1
+Error: 0: Acts 5:1
+Error: 1: Acts 28:31
+
+Normalization on; headings on ====
+
+MAXVERSE: John 4:54
+MAXCHAPTER: John 21:1
+TOP: [ Module Heading ]
+BOTTOM: Revelation of John 22:21
+
+Normalization off; headings on ====
+
+jn.3.50: John 3:50
+MAXCHAPTER: John 21:1
+TOP: [ Module Heading ]
+BOTTOM: Revelation of John 22:21
+
+Normalization on; headings off ====
+
+jn.3.50: John 4:14
+++: John 4:15
+--: John 4:14
+MAXVERSE: John 4:54
+MAXCHAPTER: John 21:1
+TOP: Genesis 1:1
+BOTTOM: Revelation of John 22:21
+
+Normalization off; headings off ====
+
+jn.3.50: John 3:50
+MAXCHAPTER: John 21:1
+TOP: Genesis 1:1
+BOTTOM: Revelation of John 22:21
+John 3:16: 0
+I Samuel 1:1: Chapter() - 1: Ruth 4:22
+
