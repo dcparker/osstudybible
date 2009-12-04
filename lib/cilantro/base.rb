@@ -88,7 +88,8 @@ module Cilantro
         @database_config_file ||= "#{APP_ROOT}/config/database.yml"
         if File.exists?(@database_config_file)
           cfg = (YAML.load_file(@database_config_file) || {})
-          cfg = cfg[:database] if cfg[:database].is_a?(Hash)
+          cfg = (cfg[RACK_ENV] || cfg[RACK_ENV.to_s]) if (cfg[RACK_ENV] || cfg[RACK_ENV.to_s]).is_a?(Hash)
+          cfg = (cfg[:database] || cfg['database']) if (cfg[:database] || cfg['database']).is_a?(Hash)
         end
 
         unless cfg
