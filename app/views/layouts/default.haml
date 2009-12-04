@@ -5,13 +5,11 @@
     %title Bloggy!
     %link{:rel => 'stylesheet', :href => '/stylesheets/blueprint/screen.css', :type => 'text/css', :media => 'screen, projection'}
     == <!--[if IE]><link rel="stylesheet" href="/stylesheets/blueprint/ie.css" type="text/css" media="screen, projection"><![endif]-->
-    %link{:rel => 'stylesheet', :href => '/stylesheets/site.css', :type => 'text/css', :media => 'screen', :title => 'no title', :charset => 'utf-8'}
+    %link{:rel => 'stylesheet', :href => '/stylesheets/site.css', :type => 'text/css', :media => 'screen'}
     %script{:type => 'text/javascript', :charset => 'utf-8', :src => '/javascripts/jquery-1.3.2.min.js'}
-    %script{:type => 'text/javascript', :charset => 'utf-8', :src => '/javascripts/jquery.edit_in_place.js'}
     %script{:type => 'text/javascript', :charset => 'utf-8', :src => '/javascripts/site.js'}
   %body
     #header
-      %h1
-        %a{:href => url(:home)} Bloggy!
+      %h1 osStudyBible
     #content
       .container= content_for_layout
