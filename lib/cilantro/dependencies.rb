@@ -17,7 +17,6 @@ module Cilantro
         open(".gems", 'w') do |f|
           gems.keys.sort.each do |name|
             options = gems[name]
-            puts "Gem #{name} #{options.inspect}"
             next if options[:only_env] == :development
             gem_def = name.dup
             gem_def << " --version '#{options[:version]}'" if options[:version]
