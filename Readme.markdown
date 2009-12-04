@@ -1,6 +1,6 @@
 # OpenSource Study Bible
 
-Currently residing at osstudybible.heroku.com, this application is meant to provide a quality, socially-enhanced Bible study tool.
+Currently residing at [osstudybible.heroku.com](http://osstudybible.heroku.com), this application is meant to provide a quality, socially-enhanced Bible study tool.
 
 ## Features:
 
