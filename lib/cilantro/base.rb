@@ -11,11 +11,8 @@ module Cilantro
       $: << APP_ROOT unless $:.include?(APP_ROOT)
       $: << APP_ROOT+'/lib' unless $:.include?(APP_ROOT+'/lib')
 
-      require 'rubygems'
-      require 'rubygems/custom_require'
-
-      # First we'll sandbox rubygems if it looks like a sandbox is being used:
-      require 'cilantro/system/gem_sandbox'
+      # Prepare our dependency-loading environment
+      require 'cilantro/dependencies'
 
       # Beginning with RACK_ENV, we determine which pieces of the app's environment need to be loaded.
         # If in development or production mode, we need to load up Sinatra:

@@ -1,4 +1,4 @@
-require_with_auto_install 'haml'
+dependency 'haml'
 
 # Creates the :section haml filter.
 # Example usage:

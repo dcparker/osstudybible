@@ -1,15 +1,3 @@
-module Kernel
-  def require_with_auto_install(name, options={})
-    begin
-      require name
-    rescue LoadError
-      puts `gem install -i gems #{"-v "+options[:version] if options[:version]} #{options[:gem] || name}`
-      Gem.use_paths("#{APP_ROOT}/gems", ["#{APP_ROOT}/gems"])
-      require name
-    end
-  end
-end
-
 module Cilantro
   def self.install_missing_gems
     gempath = "#{APP_ROOT}/gems"
@@ -22,7 +10,7 @@ module Cilantro
       Dir.glob("#{gempath}/cache/*.gem").each do |gem_name|
         gem_name = gem_name.match(/([^\/]+)\.gem/)[1]
         j, name, version = *gem_name.match(/^(.*)-([\d\.]+)$/)
-        all_gems << "#{name} --version '#{version}'\n"
+        Cilantro.add_gem(name, :version => version)
         if !File.exists?("#{gempath}/gems/#{gem_name}")
           puts "Installing gem: #{gem_name}"
           puts `gem pristine --config-file gems/gemrc.yml #{name} -v#{version}`
@@ -32,7 +20,7 @@ module Cilantro
         end
       end
       # Writes a .gems file for use on sites such as heroku, that auto-install your gems.
-      open(".gems", 'w') {|f| f << all_gems }
+      # Cilantro.add_gem(name, options)
     end
   end
 end

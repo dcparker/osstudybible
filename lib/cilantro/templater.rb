@@ -78,16 +78,20 @@ module Cilantro
       @html ||= begin
         @html = :rendering
         replace @name.inspect + ' in ' + @namespace
-        content_for_layout = render(Template.get_template(@name, @namespace), self, locals)
-        @layout ?
-          @layout.render!(content_for_layout) :
-          content_for_layout
+        if template = Template.get_template(@name, @namespace)
+          content_for_layout = render(template, self, locals)
+          @layout ?
+            @layout.render!(content_for_layout) :
+            content_for_layout
+        else
+          raise RuntimeError, "Could not find template `#{@name}' from namespace #{@namespace}", caller
+        end
       end
       replace @html
       @html
     end
     def to_json
-      require_with_auto_install 'json'
+      dependency 'json'
       locals.to_json
     end
     def to_xml
@@ -122,7 +126,11 @@ module Cilantro
         new_locals.merge!(@locals)
         @locals = old_locals
 
-        render(Template.get_partial(name, @namespace), self, new_locals)
+        if partl = Template.get_partial(name, @namespace)
+          render(partl, self, new_locals)
+        else
+          raise RuntimeError, "Could not find partial `_#{name}' from namespace #{@namespace}", caller
+        end
       end
     end
 
@@ -146,12 +154,16 @@ module Cilantro
       new_locals.merge!(@locals)
       @locals = old_locals
 
-      if looper && looper_name
-        looper.collect do |single|
-          render(Template.get_partial(name, @namespace), self, new_locals.merge(looper_name => single))
-        end.join
+      if partl = Template.get_partial(name, @namespace)
+        if looper && looper_name
+          looper.collect do |single|
+            render(partl, self, new_locals.merge(looper_name => single))
+          end.join
+        else
+          render(partl, self, new_locals)
+        end
       else
-        render(Template.get_partial(name, @namespace), self, new_locals)
+        raise RuntimeError, "Could not find partial `#{name}' from namespace #{@namespace}", caller
       end
     end
 

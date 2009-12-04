@@ -15,7 +15,7 @@ if File.directory?("#{APP_ROOT}/gems") && File.writable?("#{APP_ROOT}/gems")
   Gem.use_paths("#{APP_ROOT}/gems", ["#{APP_ROOT}/gems"])
 else
   module Kernel
-    def require_with_auto_install(name, options={})
+    def dependency(name, options={})
       require name
     end
   end
