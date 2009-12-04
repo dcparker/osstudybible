@@ -102,9 +102,7 @@ module Cilantro
     end
 
     def setup_database
-      puts Cilantro.database_config.inspect
-      puts ENV['DATABASE_URL'].inspect
-      DataMapper.setup(:default, Cilantro.database_config)
+      DataMapper.setup(:default, ENV['DATABASE_URL'] || Cilantro.database_config)
     end
 
     def report_error(error)
