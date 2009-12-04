@@ -1,0 +1,3 @@
+gemhome: ./gems
+gempath:
+  - ./gems

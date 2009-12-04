@@ -1,0 +1,355 @@
+#!/usr/bin/env ruby
+
+# File: bin/cilantro
+# Cilantro is a simple app structure for use with Sinatra, and this is the
+# start/stop/restart script. All it does is step into the given directory,
+# and require sinatra and then config/init.rb. It'll record its pid to a
+# file and run Sinatra on the port you specify -- allowing you to stop and
+# restart that same program as you wish. All you have to give it a
+# directory to run it from, but you'll probably want to give it a port too.
+
+Kernel.trap('INT') {
+  puts "Exiting..."
+  exit
+}
+
+require 'optparse'
+
+def safefork
+  tryagain = true
+
+  while tryagain
+    tryagain = false
+    begin
+      if pid = fork
+        return pid
+      end
+    rescue Errno::EWOULDBLOCK
+      sleep 5
+      tryagain = true
+    end
+  end
+end
+
+def redirect_io(logfile_name)
+  begin; STDIN.reopen "/dev/null"; rescue ::Exception; end
+
+  if logfile_name
+    begin
+      STDOUT.reopen logfile_name, "a"
+      STDOUT.sync = true
+    rescue ::Exception
+      begin; STDOUT.reopen "/dev/null"; rescue ::Exception; end
+    end
+  else
+    begin; STDOUT.reopen "/dev/null"; rescue ::Exception; end
+  end
+
+  begin; STDERR.reopen STDOUT; rescue ::Exception; end
+  STDERR.sync = true
+end
+
+def report_error(e)
+  # Make the magic happen!
+  # (jabber me when there's an error loading an app)
+  if File.exists?("config/#{ENV['RACK_ENV']}.yml")
+    jabber = YAML.load_file("config/#{ENV['RACK_ENV']}.yml") || {}
+    if jabber[:notify]
+      begin
+        require 'rubygems'
+        require 'xmpp4r'
+        client = Jabber::Client.new(Jabber::JID.new("#{jabber[:username]}/cilantro"))
+        client.connect('talk.google.com', '5222')
+        client.auth(jabber[:password])
+        client.send(Jabber::Presence.new.set_type(:available))
+        msg = Jabber::Message.new(jabber[:notify], "#{e.inspect}\n#{e.backtrace.join("\n")}")
+        msg.type = :chat
+        client.send(msg)
+        client.close
+      rescue => f
+        raise f
+      end
+    else
+      raise e
+    end
+  else
+    raise e
+  end
+end
+
+$options = {}
+
+optparse = OptionParser.new do |opts|
+  opts.banner = "Usage: #{$0} [action=start] [directory=.] [options]"
+
+  $options[:verbose] = false
+  opts.on( '-v', '--verbose', "Show me what you're doing" ) do
+    $options[:verbose] = true
+  end
+
+  $options[:host] = '0.0.0.0'
+  opts.on('--host HOST', "Listen on host HOST (default ALL:0.0.0.0)") do |host|
+    $options[:host] = host
+    $options[:specified_host] = true
+  end
+
+  $options[:port] = 5000
+  opts.on( '-p', '--port PORT', "Listen on port PORT (default 5000)" ) do |port|
+    $options[:port] = port
+    $options[:specified_port] = true
+  end
+
+  $options[:config] = nil
+  opts.on( '-c', '--config CONFIG', "Use config file CONFIG" ) do |conf|
+    raise if !File.exists?(conf)
+    $options[:config] = conf
+  end
+
+  $options[:database_config] = nil
+  opts.on( '--database_config CONFIG', "Use database config file CONFIG") do |conf|
+    $options[:database_config] = conf
+  end
+
+  opts.on( '-h', '--help', 'Display this screen' ) do
+    puts opts
+    exit
+  end
+end
+
+optparse.parse! unless ARGV[0] == 'git'
+
+action = ARGV[0]
+directory = ARGV[1]
+if directory.nil?
+  if action =~ /^(run|start|stop|status|restart|new|update|git|gitwork)$/
+    directory = Dir.pwd
+  elsif action.nil?
+    directory = Dir.pwd
+    action = 'run'
+  else
+    directory = action
+    action = 'run'
+  end
+end
+if directory == '.'
+  directory = Dir.pwd
+end
+
+puts "Using database config #{$options[:database_config]}" if $options[:database_config]
+$options[:database_config] = nil if $options[:database_config] && !File.exists?($options[:database_config]) && !File.exists?(directory + '/' + $options[:database_config])
+
+ports = []
+require 'yaml'
+$config = case
+when $options[:config]
+  YAML.load_file($options[:config])
+when File.exists?("#{directory}/config/#{ENV['RACK_ENV']}.yml")
+  YAML.load_file("#{directory}/config/#{ENV['RACK_ENV']}.yml")
+else
+  {}
+end || {}
+
+if ($options[:config] || (!$options[:specified_port] && File.exists?("#{directory}/config/#{ENV['RACK_ENV']}.yml"))) && action =~ /start/
+  if $config.is_a?(Hash)
+    $options[:host] = $config[:host] if $config.has_key?(:host) && !$options[:specified_host]
+    ports = $config[:ports] || []
+    $options[:port] = ports.pop unless ports.empty? # if no ports specified, we'll continue with the default port 5000
+    # Then we need to start a few more starter processes if there are more ports to run on
+    ports.each do |port|
+      system "#{$0} #{action} \"#{directory}\" --host #{$options[:host]} --port #{port}#{' --database_config '+$options[:database_config] if $options[:database_config]}#{' --verbose' if $options[:verbose]}"
+      sleep 1 # give each one a little time to start up
+    end
+  end
+end
+
+# Start our stuff
+Dir.chdir(directory) if File.directory?(directory)
+write_dir = File.directory?('log') ? 'log' : 'config'
+
+RACK_ENV = (ENV['RACK_ENV'] ||= ($config[:environment] || 'development').to_s).to_sym
+
+def run_app!
+  require 'lib/cilantro'
+  Cilantro.database_config $options[:database_config]
+  Cilantro.load_environment
+  Cilantro.set_options(
+    :run => Proc.new { false },
+    :host => $options[:host],
+    :port => $options[:port]
+  )
+
+  # Need to add an EM.watch_dir method, to notice files added, modified, or deleted.
+  #   EM.watch_file("/tmp/foo", Handler)
+  # where Handler is a class that on method_missing simply reloads the app. :)
+  # Do need to think about what to do when reloading the app fails due to error.
+  # Also could implement the EM way to finish outstanding requests before quitting.
+
+  Kernel.trap('HUP') {
+    puts "Restarting..."
+    exit
+  }
+  at_exit {
+    exec "#{$0} #{ARGV.join(' ')}"
+  }
+  begin
+    Cilantro.app.run!
+  rescue RuntimeError => e
+    if e.to_s == 'no acceptor'
+      warn "\n\t*** Can't use port #{$options[:port]}, someone's already there! ***\n"
+      exit!
+    end
+  end
+end
+
+begin
+  case action
+  when 'run'
+    if File.exists?('config/init.rb')
+      run_app!
+    else
+      puts "ERROR: #{directory} doesn't seem to be a Cilantro directory (missing config/init.rb)"
+      exit
+    end
+  when 'start'
+    Dir.glob("#{write_dir}/cilantro.*.pid").each do |pidfile|
+      pid = pidfile.match(/(\d+)/)[0]
+      port = File.read(pidfile).chomp
+      if $options[:port].to_s == port.to_s
+        # Check to see if it's actually running:
+        if `which pidof` == '' || pid == `pidof "cilantro [#{port.to_s}]"`.chomp
+          puts "[WARN] Cilantro app already running on #{port}! Trying again in 1 seconds..."
+          sleep 1
+          exit if pid == `pidof "cilantro [#{port.to_s}]"`.chomp
+        end
+        if File.exists?(pidfile)
+          File.delete(pidfile)
+          puts "[WARN] Cilantro app must have ended prematurely: stale pid file detected and removed."
+        end
+      end
+    end
+
+    # Check whether environment is sane...
+    #   - config/init
+    if File.exists?('config/init.rb')
+      puts "[START] Cilantro app in #{directory} on port #{$options[:host]}:#{$options[:port]}..."
+      puts "Started #{ports.length+1} Cilantro services." unless ports.empty?
+
+      # Fork to a daemon now...
+      srand # Split rand streams between spawning and daemonized process
+      safefork and exit # Fork and exit from the parent
+      # Detach from the controlling terminal
+      unless sess_id = Process.setsid
+        raise Daemons.RuntimeException.new('cannot detach from controlling terminal')
+      end
+      # Prevent the possibility of acquiring a controlling terminal
+      #if oldmode.zero?
+        trap 'SIGHUP', 'IGNORE'
+        safefork and exit
+      #end
+      $0 = "cilantro [#{$options[:port]}]"
+      File.umask 0000 # Insure sensible umask
+      # Make sure all file descriptors are closed
+      ObjectSpace.each_object(IO) do |io|
+        unless [STDIN, STDOUT, STDERR].include?(io)
+          begin
+            unless io.closed?
+              io.close
+            end
+          rescue ::Exception
+          end
+        end
+      end
+      $process_id = Process.pid
+
+      redirect_io("#{write_dir}/cilantro.#{$options[:port]}.log")
+
+      File.open("#{write_dir}/cilantro.#{$process_id}.pid", 'w') do |pidfile|
+        pidfile << $options[:port]
+      end
+
+      at_exit {
+        File.delete("#{write_dir}/cilantro.#{$process_id}.pid")
+      }
+
+      run_app!
+    else
+      puts "ERROR: #{directory} doesn't seem to be a Cilantro directory (missing config/init.rb)"
+      exit
+    end
+  when 'status'
+    count = 0
+    pidfiles = Dir.glob("#{write_dir}/cilantro.*.pid")
+    pidfiles.each do |pidfile|
+      pid = pidfile.match(/(\d+)/)[0]
+      port = File.read(pidfile).chomp
+      if $options[:port] == port || !$options[:specified_port]
+        puts "[STATUS] Cilantro app running on port #{port}..."
+        count += 1
+      end
+    end
+    puts "#{count} Cilantro running for #{directory}."
+  when 'stop'
+    count = 0
+    pidfiles = Dir.glob("#{write_dir}/cilantro.*.pid")
+    pidfiles.each do |pidfile|
+      pid = pidfile.match(/(\d+)/)[0]
+      port = File.read(pidfile).chomp
+      if $options[:port] == port || !$options[:specified_port]
+        # Check to see if it's actually running:
+        if `which pidof` == '' || pid == `pidof "cilantro [#{port.to_s}]"`.chomp
+          puts "[STOP] Cilantro app in #{directory} on port #{port}..."
+          Process.kill("INT", pid.to_i)
+          count += 1
+        end
+        sleep 0.5
+        if File.exists?(pidfile)
+          if `which pidof` == '' || pid == `pidof "cilantro [#{port.to_s}]"`.chomp
+            Process.kill("TERM", pid.to_i) rescue nil
+            sleep 0.3
+            Process.kill("KILL", pid.to_i) rescue nil
+          end
+          if File.exists?(pidfile)
+            File.delete(pidfile) rescue nil
+            puts "[WARN] Cilantro app must have ended prematurely: stale pid file detected and removed."
+          end
+        end
+      end
+    end
+    puts "Stopped #{count} Cilantro services."
+  when 'restart'
+    puts "sorry, not yet implemented...\n\nWhat I want here is to restart all cilantro services that match the commandline specifications, but each with the full options they started with."
+  when 'new'
+    ENV['GIT_DIR'] = "#{ENV['HOME']}/.cilantro.git"
+    system "mkdir \"#{directory}\""
+    Dir.chdir(directory)
+    if File.directory?(ENV['GIT_DIR'])
+      system "git reset --hard HEAD"
+    else
+      system "git clone git://github.com/dcparker/cilantro.git \"#{directory}\""
+    end
+    puts "Run 'git remote add origin ...' to add an origin for your project. Or if running on linode, simply run 'linode add domain.com'"
+    puts "Whenever the cilantro project is updated, you can keep up to date by running 'cilantro update'"
+    exec "mate ." if `which mate`
+  when 'update'
+    ENV['GIT_DIR'] = "#{ENV['HOME']}/.cilantro.git"
+    unless File.directory?("#{ENV['HOME']}/.cilantro.git")
+      system "git clone git://github.com/dcparker/cilantro.git .cgit.foobar"
+      system "rm -rf .cgit.foobar"
+    end
+    system "git stash save"
+    system "git pull origin cilantro"
+    system "git stash pop"
+  when 'git'
+    unless ENV['GIT_DIR'] == "#{ENV['HOME']}/.cilantro.git"
+      ENV['GIT_DIR'] = "#{ENV['HOME']}/.cilantro.git"
+      puts "Now using #{ENV['HOME']}/.cilantro.git. Type exit to return"
+      exec "bash --login"
+    end
+  end
+rescue SyntaxError, LoadError => e
+  puts "Error: #{e}\n#{e.backtrace.join("\n")}"
+  report_error(e)
+rescue => e
+  puts "Error: #{e}\n#{e.backtrace.join("\n")}"
+  report_error(e)
+end

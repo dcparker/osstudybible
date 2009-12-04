@@ -1,0 +1,5 @@
+config/development.sqlite
+gems/gems
+gems/doc
+gems/bin
+.DS_Store

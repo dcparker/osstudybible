@@ -1,0 +1,52 @@
+html, body, div,
+h1, h2, h3, h4, h5, h6,
+p, blockquote, pre, address,
+dl, dt, dd, ol, ul, li,
+form, fieldset, legend, label
+table, caption, tbody, tfoot, thead, tr, th, td,
+abbr, acronym, big, small, cite, dfn,
+strong, em, span, del, ins, 
+code, kbd, samp, var, 
+img, object, iframe,
+a {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-weight: inherit;
+  font-style: inherit;
+  font-family: inherit;
+  font-size: 100%;
+  vertical-align: baseline;
+  }
+ 
+input, select, textarea, button {
+  margin: 0;
+  font-weight: inherit;
+  font-style: inherit;
+  font-family: inherit;
+  font-size: 100%;
+  vertical-align: baseline;
+  }
+ 
+html, body, div, pre,
+h1, h2, h3, h4, h5, h6,
+p, blockquote, address,
+dl, dt, dd, ul, ol, li,
+form, fieldset {
+  position:relative;
+  }
+ 
+h1, h2, h3, h4, h5, h6, address, th, dt {
+  font-weight:normal;
+  font-style:normal;
+  }
+ 
+body { line-height: 1; color: black; background: white; }
+ 
+blockquote, q { quotes: none; }
+ 
+ol, ul { list-style: none; }
+ 
+table { border-collapse:separate; border-spacing:0; } /* tables still need 'cellspacing="0"' in the markup */
+ 
+th, td { vertical-align:top; }

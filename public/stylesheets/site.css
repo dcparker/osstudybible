@@ -1,0 +1,15 @@
+.container {width:950px;margin:0 auto;color:#666;}
+.hide {display:none;}
+p.subtext {color:#666;font-size:.9em;margin:0;padding:0;}
+p {margin-bottom:1em;font-size:1.2em;}
+
+/* header */
+#header.span-24 {position:relative;margin-top:1em;}
+#header.span-24 h1 {margin:0;font-size:9em;color:#333;}
+#header.span-24 p.subtext {margin-left:8px;font-size:1.5em;font-weight:bold;color:#0a6b0b;}
+            
+/* form */
+#form {position:relative;padding:1em 1.5em;border:3px solid #16ea17;-moz-border-radius: 10px;-webkit-border-radius: 10px;}
+#form label {font-size:1.4em;}
+#form input {font-size:1.4em;height:1.5em;padding-left:5px;}
+input#name {width:360px}

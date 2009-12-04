@@ -1,0 +1,10 @@
+%p
+  See existing
+  %a{:href => url(:posts)} Posts
+%h2 New Post
+%form{:action => '/posts', :method => 'POST'}
+  %p
+    %input{:type => 'text', :name => 'post[title]'}
+  %textarea{:name => 'post[body]'}
+  %p
+    %input{:type => 'submit'}

@@ -1,0 +1,48 @@
+#!/usr/bin/env ruby
+
+# File: bin/install
+# Purpose: Install system environment conducive to developing Cilantro applications.
+# Installs:
+#   1) ~/.bin to PATH (adds "export PATH=~/.bin:$PATH" to .bash_profile)
+#   2) Copies bin/cilantro to /usr/local/bin/cilantro (if have sudo permission), and installs a script into ~/.bin that proxies to the current directory's bin/cilantro, or /usr/local/bin/cilantro, whichever exists first.
+#   3) Checks out cilantro to ~/.cilantro.git
+
+
+bash_profile = File.read("#{ENV['HOME']}/.bash_profile")
+unless bash_profile =~ /\~\/.bin:\$PATH/ && File.directory?("#{ENV['HOME']}/.bin")
+  open("#{ENV['HOME']}/.bash_profile", 'a') do |f|
+    f << 'export PATH=~/.bin:$PATH'
+  end
+  mkdir "#{ENV['HOME']}/.bin"
+  puts "Installed ~/.bin to PATH (added to .bash_profile)"
+end
+
+
+if `cp #{File.dirname(__FILE__)}/cilantro /usr/local/bin/`
+  # `cp #{File.dirname(__FILE__)}/cilantro #{ENV['HOME']}/.bin`
+  puts "Installed cilantro to /usr/local/bin"
+end
+
+
+open("#{ENV['HOME']}/.bin/cilantro", 'w') do |f|
+f << <<-END_PROXY_FILE
+#!/usr/bin/env ruby
+if File.exists?('bin/cilantro')
+  exec "bin/cilantro \#{ARGV.join(' ')}"
+else
+  puts "This project does not have a bin/cilantro installed!"
+  exec "/usr/local/bin/cilantro \#{ARGV.join(' ')}" if File.exists?('/usr/local/bin/cilantro')
+end
+END_PROXY_FILE
+end
+`chmod +x "#{ENV['HOME']}/.bin/cilantro"`
+puts "Installed ~/.bin/cilantro."
+
+
+unless File.directory?("#{ENV['HOME']}/.cilantro.git")
+  Dir.chdir(ENV['HOME'])
+  `git clone git://github.com/dcparker/cilantro.git .cilantro`
+  `mv .cilantro/.git .cilantro.git`
+  `rm -rf .cilantro`
+  puts "Installed ~/.cilantro.git"
+end

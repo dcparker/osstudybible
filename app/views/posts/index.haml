@@ -1,0 +1,4 @@
+%h1== #{posts.length} Posts:
+- posts.each do |post|
+  %p
+    %a{:href => url(:post, post)}= post.title
