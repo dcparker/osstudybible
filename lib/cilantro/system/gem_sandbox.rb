@@ -16,7 +16,6 @@ if File.directory?("#{APP_ROOT}/gems") && File.writable?("#{APP_ROOT}/gems")
 else
   module Kernel
     def require_with_auto_install(name, options={})
-      puts "Requiring #{name}"
       require name
     end
   end
